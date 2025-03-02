@@ -1,0 +1,55 @@
+name: Build XDNA Driver
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  repository_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+    
+    - name: Install dependencies
+      run: |
+        sudo ./tools/amdxdna_deps.sh
+        sudo ./xrt/src/runtime_src/tools/scripts/xrtdeps.sh
+      working-directory:  ${{ github.workspace }}
+
+    - name: Build XRT
+      run: ./build.sh -npu -opt
+      working-directory:  ${{ github.workspace }}/xrt/build
+        
+    - name: Upload XRT
+      uses: actions/upload-artifact@v4
+      with:
+        name: xrt
+        path: ${{ github.workspace }}/xrt/build/Release/
+
+    - name: Install XRT
+      run: sudo apt install ./xrt/build/Release/*.deb
+      working-directory:  ${{ github.workspace }}
+        
+    - name: Build XDNA Driver
+      run: |
+        ./build.sh -release
+        ./build.sh -package
+      working-directory:  ${{ github.workspace }}/build
+            
+    - name: Install XDNA Driver
+      run: sudo apt install ./build/Release/*.deb
+      working-directory:  ${{ github.workspace }}
+
+    - name: Upload XDNA Driver
+      uses: actions/upload-artifact@v4
+      with:
+        name: xdna-driver
+        path: ${{ github.workspace }}/build/Release/
